@@ -25,6 +25,7 @@ export default function AdminDashboard() {
     twitter: "",
   });
   const [profileImage, setProfileImage] = useState<File | null>(null);
+  const [profileImageUrl, setProfileImageUrl] = useState("");
 
   const { data: profile } = useQuery<Profile>({
     queryKey: ['/api/profile'],
@@ -43,6 +44,11 @@ export default function AdminDashboard() {
         linkedin: profile.linkedin || "",
         twitter: profile.twitter || "",
       });
+      
+      // Pre-populate profile image URL if it exists and is a URL (not a local file path)
+      if (profile.profileImage && profile.profileImage.startsWith('http')) {
+        setProfileImageUrl(profile.profileImage);
+      }
     }
   }, [profile]);
 
@@ -109,7 +115,9 @@ export default function AdminDashboard() {
       data.append(key, value);
     });
 
-    if (profileImage) {
+    if (profileImageUrl.trim()) {
+      data.append('profileImageUrl', profileImageUrl.trim());
+    } else if (profileImage) {
       data.append('profileImage', profileImage);
     }
 
@@ -150,7 +158,23 @@ export default function AdminDashboard() {
               
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="profileImage">Profile Photo</Label>
+                  <Label htmlFor="profileImageUrl">Profile Photo URL</Label>
+                  <Input
+                    id="profileImageUrl"
+                    name="profileImageUrl"
+                    type="url"
+                    value={profileImageUrl}
+                    onChange={(e) => setProfileImageUrl(e.target.value)}
+                    placeholder="https://example.com/image.jpg"
+                    data-testid="input-profile-image-url"
+                  />
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Enter a direct link to an image, or upload a file below
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="profileImage">Or Upload Profile Photo</Label>
                   <div className="mt-2 flex items-center gap-4">
                     <Input
                       id="profileImage"

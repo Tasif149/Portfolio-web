@@ -67,6 +67,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Update portfolio profile (protected)
   app.post('/api/profile', requireApiKey, upload.single('profileImage'), async (req, res) => {
     try {
+      // Get existing profile to preserve image if no new one provided
+      const existingProfile = await storage.getProfile();
+      
       const profileData = {
         ...req.body,
         github: req.body.github || '',
@@ -74,9 +77,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         twitter: req.body.twitter || '',
       };
 
-      // If a new image was uploaded, add its path
-      if (req.file) {
+      // Priority 1: Check if a direct image URL was provided (non-empty)
+      const hasImageUrl = req.body.profileImageUrl && req.body.profileImageUrl.trim().length > 0;
+      
+      if (hasImageUrl) {
+        const imageUrl = req.body.profileImageUrl.trim();
+        
+        // Basic URL validation
+        try {
+          const url = new URL(imageUrl);
+          if (!['http:', 'https:'].includes(url.protocol)) {
+            return res.status(400).json({ error: 'Only HTTP and HTTPS URLs are allowed' });
+          }
+          profileData.profileImage = imageUrl;
+        } catch {
+          return res.status(400).json({ error: 'Invalid image URL provided' });
+        }
+      }
+      // Priority 2: Check if a file was uploaded
+      else if (req.file) {
         profileData.profileImage = `/uploads/${req.file.filename}`;
+      }
+      // Priority 3: Keep existing image if no new one provided
+      else if (existingProfile?.profileImage) {
+        profileData.profileImage = existingProfile.profileImage;
       }
 
       // Validate the data
