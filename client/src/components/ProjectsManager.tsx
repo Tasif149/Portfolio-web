@@ -23,6 +23,7 @@ interface ProjectFormData {
   description: string;
   longDescription: string;
   image: string;
+  imageData?: string;
   tags: string;
   liveUrl: string;
   githubUrl: string;
@@ -165,6 +166,7 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       description: "",
       longDescription: "",
       image: "",
+      imageData: undefined,
       tags: "",
       liveUrl: "",
       githubUrl: "",
@@ -199,7 +201,7 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
   const handleRemoveImage = () => {
     setSelectedFile(null);
     setImagePreview("");
-    setFormData({ ...formData, image: "" });
+    setFormData({ ...formData, image: "", imageData: undefined });
   };
 
   const uploadImage = async (): Promise<string | null> => {
@@ -222,8 +224,8 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
         throw new Error('Failed to upload image');
       }
 
-      const { imageUrl } = await response.json();
-      return imageUrl;
+      const { imageData } = await response.json();
+      return imageData;
     } catch (error) {
       toast({
         title: "Error",
@@ -244,12 +246,16 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
         description: project.description,
         longDescription: project.longDescription || "",
         image: project.image || "",
+        imageData: project.imageData || undefined,
         tags: project.tags.join(", "),
         liveUrl: project.liveUrl || "",
         githubUrl: project.githubUrl || "",
         order: project.order,
       });
-      if (project.image) {
+      // Set preview to imageData first, then fall back to image URL
+      if (project.imageData) {
+        setImagePreview(project.imageData);
+      } else if (project.image) {
         setImagePreview(project.image);
       }
     } else {
@@ -270,18 +276,24 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       return;
     }
 
-    let imageUrl = formData.image;
+    let imageData = formData.imageData;
+    let image = formData.image;
 
     if (selectedFile) {
-      const uploadedUrl = await uploadImage();
-      if (uploadedUrl) {
-        imageUrl = uploadedUrl;
+      const uploadedData = await uploadImage();
+      if (uploadedData) {
+        imageData = uploadedData;
+        image = ""; // Clear URL if we have data
       } else {
         return;
       }
     }
 
-    const dataToSubmit = { ...formData, image: imageUrl };
+    const dataToSubmit = { 
+      ...formData, 
+      image: image || "", 
+      imageData: imageData 
+    };
 
     if (editingProject) {
       updateProjectMutation.mutate({
@@ -505,7 +517,7 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
                     type="url"
                     value={formData.image}
                     onChange={(e) => {
-                      setFormData({ ...formData, image: e.target.value });
+                      setFormData({ ...formData, image: e.target.value, imageData: undefined });
                       setImagePreview(e.target.value);
                       setSelectedFile(null);
                     }}

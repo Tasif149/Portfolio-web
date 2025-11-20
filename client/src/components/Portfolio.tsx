@@ -49,8 +49,8 @@ export default function Portfolio() {
               data-testid={`card-project-${project.id}`}
             >
               <div className="aspect-video bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center relative overflow-hidden">
-                {project.image ? (
-                  <img src={project.image} alt={project.title} className="w-full h-full object-cover" />
+                {(project.imageData || project.image) ? (
+                  <img src={project.imageData || project.image || ''} alt={project.title} className="w-full h-full object-cover" />
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 animate-gradient" />
                 )}
@@ -93,8 +93,8 @@ export default function Portfolio() {
 
               <div className="space-y-4">
                 <div className="aspect-video bg-gradient-to-br from-primary/20 to-accent/20 rounded-md overflow-hidden">
-                  {selectedProject.image ? (
-                    <img src={selectedProject.image} alt={selectedProject.title} className="w-full h-full object-cover" />
+                  {(selectedProject.imageData || selectedProject.image) ? (
+                    <img src={selectedProject.imageData || selectedProject.image || ''} alt={selectedProject.title} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full bg-gradient-to-br from-primary/30 via-accent/20 to-primary/30 animate-gradient" />
                   )}

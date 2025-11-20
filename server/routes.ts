@@ -40,13 +40,7 @@ const upload = multer({
 });
 
 const projectUpload = multer({
-  storage: multer.diskStorage({
-    destination: projectUploadDir,
-    filename: (req, file, cb) => {
-      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-      cb(null, 'project-' + uniqueSuffix + path.extname(file.originalname));
-    }
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
   fileFilter: (req, file, cb) => {
     const allowedTypes = /jpeg|jpg|png|gif|webp/;
@@ -176,9 +170,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Upload project image (protected)
+  // Upload project image (protected) - saves to database
   app.post('/api/projects/upload-image', requireApiKey, (req, res, next) => {
-    projectUpload.single('image')(req, res, (err) => {
+    projectUpload.single('image')(req, res, async (err) => {
       if (err) {
         if (err instanceof multer.MulterError) {
           if (err.code === 'LIMIT_FILE_SIZE') {
@@ -197,8 +191,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'No image file provided' });
       }
       
-      const imageUrl = `/uploads/projects/${req.file.filename}`;
-      res.json({ imageUrl });
+      try {
+        // Convert image to base64
+        const imageBase64 = req.file.buffer.toString('base64');
+        const mimeType = req.file.mimetype;
+        const dataUri = `data:${mimeType};base64,${imageBase64}`;
+        
+        // Return the base64 data URI
+        res.json({ imageData: dataUri });
+      } catch (error) {
+        console.error('Error processing image:', error);
+        res.status(500).json({ error: 'Failed to process image' });
+      }
     });
   });
 
