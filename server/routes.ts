@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertProfileSchema } from "@shared/schema";
+import { insertProfileSchema, insertProjectSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
@@ -122,6 +122,90 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: 'Invalid profile data', details: error });
       }
       res.status(500).json({ error: 'Failed to update profile' });
+    }
+  });
+
+  // Get all projects
+  app.get('/api/projects', async (req, res) => {
+    try {
+      const projectsList = await storage.getProjects();
+      res.json(projectsList);
+    } catch (error) {
+      console.error('Error fetching projects:', error);
+      res.status(500).json({ error: 'Failed to fetch projects' });
+    }
+  });
+
+  // Get a single project
+  app.get('/api/projects/:id', async (req, res) => {
+    try {
+      const project = await storage.getProject(req.params.id);
+      if (!project) {
+        return res.status(404).json({ error: 'Project not found' });
+      }
+      res.json(project);
+    } catch (error) {
+      console.error('Error fetching project:', error);
+      res.status(500).json({ error: 'Failed to fetch project' });
+    }
+  });
+
+  // Create a new project (protected)
+  app.post('/api/projects', requireApiKey, async (req, res) => {
+    try {
+      // Parse tags if it's a string
+      const projectData = {
+        ...req.body,
+        tags: typeof req.body.tags === 'string' 
+          ? req.body.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean)
+          : req.body.tags || [],
+        order: req.body.order ? parseInt(req.body.order, 10) : 0,
+      };
+
+      const validated = insertProjectSchema.parse(projectData);
+      const newProject = await storage.createProject(validated);
+      res.json(newProject);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      if (error instanceof Error && error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid project data', details: error });
+      }
+      res.status(500).json({ error: 'Failed to create project' });
+    }
+  });
+
+  // Update a project (protected)
+  app.patch('/api/projects/:id', requireApiKey, async (req, res) => {
+    try {
+      // Parse tags if it's a string
+      const projectData: any = { ...req.body };
+      if (typeof projectData.tags === 'string') {
+        projectData.tags = projectData.tags.split(',').map((tag: string) => tag.trim()).filter(Boolean);
+      }
+      if (projectData.order !== undefined) {
+        projectData.order = parseInt(projectData.order, 10);
+      }
+
+      const validated = insertProjectSchema.partial().parse(projectData);
+      const updatedProject = await storage.updateProject(req.params.id, validated);
+      res.json(updatedProject);
+    } catch (error) {
+      console.error('Error updating project:', error);
+      if (error instanceof Error && error.name === 'ZodError') {
+        return res.status(400).json({ error: 'Invalid project data', details: error });
+      }
+      res.status(500).json({ error: 'Failed to update project' });
+    }
+  });
+
+  // Delete a project (protected)
+  app.delete('/api/projects/:id', requireApiKey, async (req, res) => {
+    try {
+      await storage.deleteProject(req.params.id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      res.status(500).json({ error: 'Failed to delete project' });
     }
   });
 
