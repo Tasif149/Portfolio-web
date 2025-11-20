@@ -109,24 +109,34 @@ export default function AdminDashboard() {
   };
 
   const handleCropComplete = (croppedBlob: Blob) => {
-    const croppedFile = new File([croppedBlob], "profile-image.jpg", {
-      type: "image/jpeg",
-    });
-    setProfileImage(croppedFile);
-    setCropperOpen(false);
-    setImageToCrop("");
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+    try {
+      const croppedFile = new File([croppedBlob], "profile-image.jpg", {
+        type: "image/jpeg",
+      });
+      setProfileImage(croppedFile);
+      setCropperOpen(false);
+      setImageToCrop("");
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+      toast({
+        title: "Image cropped",
+        description: "Your profile picture has been cropped and is ready to save.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to process cropped image. Please try again.",
+        variant: "destructive",
+      });
+      // Keep the cropper open and imageToCrop set so user can retry
     }
-    toast({
-      title: "Image cropped",
-      description: "Your profile picture has been cropped and is ready to save.",
-    });
   };
 
   const handleCropCancel = () => {
     setCropperOpen(false);
     setImageToCrop("");
+    setProfileImage(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -159,8 +169,6 @@ export default function AdminDashboard() {
     // Load the URL into the cropper
     setImageToCrop(url);
     setCropperOpen(true);
-    // Clear the URL field since we'll use the cropped version
-    setProfileImageUrl("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -180,10 +188,11 @@ export default function AdminDashboard() {
       data.append(key, value);
     });
 
-    if (profileImageUrl.trim()) {
-      data.append('profileImageUrl', profileImageUrl.trim());
-    } else if (profileImage) {
+    // Prioritize cropped file over URL
+    if (profileImage) {
       data.append('profileImage', profileImage);
+    } else if (profileImageUrl.trim()) {
+      data.append('profileImageUrl', profileImageUrl.trim());
     }
 
     updateProfileMutation.mutate(data);
