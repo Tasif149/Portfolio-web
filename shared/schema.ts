@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, integer } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -34,3 +34,31 @@ export const insertProfileSchema = createInsertSchema(profiles).omit({
 
 export type InsertProfile = z.infer<typeof insertProfileSchema>;
 export type Profile = typeof profiles.$inferSelect;
+
+export const projects = pgTable("projects", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  longDescription: text("long_description"),
+  image: text("image"),
+  tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
+  liveUrl: text("live_url"),
+  githubUrl: text("github_url"),
+  order: integer("order").notNull().default(0),
+});
+
+export const insertProjectSchema = createInsertSchema(projects).omit({
+  id: true,
+}).extend({
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  longDescription: z.string().optional(),
+  image: z.union([z.string().url(), z.literal("")]).optional(),
+  tags: z.array(z.string()).default([]),
+  liveUrl: z.union([z.string().url(), z.literal("")]).optional(),
+  githubUrl: z.union([z.string().url(), z.literal("")]).optional(),
+  order: z.number().default(0),
+});
+
+export type InsertProject = z.infer<typeof insertProjectSchema>;
+export type Project = typeof projects.$inferSelect;
