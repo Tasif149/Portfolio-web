@@ -132,6 +132,37 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleLoadUrlImage = () => {
+    const url = profileImageUrl.trim();
+    
+    if (!url) {
+      toast({
+        title: "Error",
+        description: "Please enter an image URL first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(url);
+    } catch {
+      toast({
+        title: "Error",
+        description: "Please enter a valid URL",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Load the URL into the cropper
+    setImageToCrop(url);
+    setCropperOpen(true);
+    // Clear the URL field since we'll use the cropped version
+    setProfileImageUrl("");
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -200,17 +231,28 @@ export default function AdminDashboard() {
               <div className="space-y-4">
                 <div>
                   <Label htmlFor="profileImageUrl">Profile Photo URL</Label>
-                  <Input
-                    id="profileImageUrl"
-                    name="profileImageUrl"
-                    type="url"
-                    value={profileImageUrl}
-                    onChange={(e) => setProfileImageUrl(e.target.value)}
-                    placeholder="https://example.com/image.jpg"
-                    data-testid="input-profile-image-url"
-                  />
+                  <div className="flex gap-2">
+                    <Input
+                      id="profileImageUrl"
+                      name="profileImageUrl"
+                      type="url"
+                      value={profileImageUrl}
+                      onChange={(e) => setProfileImageUrl(e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      data-testid="input-profile-image-url"
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleLoadUrlImage}
+                      data-testid="button-load-url-image"
+                    >
+                      Load & Crop
+                    </Button>
+                  </div>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Enter a direct link to an image, or upload a file below
+                    Enter a direct link to an image, then click "Load & Crop" to crop it
                   </p>
                 </div>
 
