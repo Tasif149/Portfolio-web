@@ -41,6 +41,7 @@ export const projects = pgTable("projects", {
   description: text("description").notNull(),
   longDescription: text("long_description"),
   image: text("image"),
+  imageData: text("image_data"),
   tags: text("tags").array().notNull().default(sql`ARRAY[]::text[]`),
   liveUrl: text("live_url"),
   githubUrl: text("github_url"),
@@ -55,9 +56,10 @@ export const insertProjectSchema = createInsertSchema(projects).omit({
   longDescription: z.string().optional(),
   image: z.union([
     z.string().url(), 
-    z.string().startsWith('/uploads/'), 
+    z.string().startsWith('/api/projects/'), 
     z.literal("")
   ]).optional(),
+  imageData: z.string().optional(),
   tags: z.array(z.string()).default([]),
   liveUrl: z.union([z.string().url(), z.literal("")]).optional(),
   githubUrl: z.union([z.string().url(), z.literal("")]).optional(),
