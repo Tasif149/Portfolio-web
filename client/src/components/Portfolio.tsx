@@ -1,51 +1,31 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { ExternalLink, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Project } from "@shared/schema";
 
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  longDescription?: string;
-  image?: string;
-  tags: string[];
-  liveUrl?: string;
-  githubUrl?: string;
-}
-
-interface PortfolioProps {
-  projects?: Project[];
-}
-
-const defaultProjects: Project[] = [
-  {
-    id: "1",
-    title: "E-Commerce Platform",
-    description: "A modern e-commerce solution with real-time inventory",
-    longDescription: "Built a full-stack e-commerce platform with React, Node.js, and PostgreSQL. Features include real-time inventory tracking, secure payment processing, and an intuitive admin dashboard.",
-    tags: ["React", "Node.js", "PostgreSQL"],
-  },
-  {
-    id: "2",
-    title: "AI Content Generator",
-    description: "AI-powered tool for creating marketing content",
-    longDescription: "Developed an AI-powered content generation platform using GPT-4 API. Enables marketers to create high-quality content with custom brand voice and SEO optimization.",
-    tags: ["TypeScript", "OpenAI", "Next.js"],
-  },
-  {
-    id: "3",
-    title: "Task Management App",
-    description: "Collaborative project management with real-time updates",
-    longDescription: "Created a collaborative task management application with real-time synchronization using WebSockets. Includes features like team boards, time tracking, and analytics.",
-    tags: ["React", "WebSocket", "MongoDB"],
-  },
-];
-
-export default function Portfolio({ projects = defaultProjects }: PortfolioProps) {
+export default function Portfolio() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  
+  const { data: projects = [], isLoading } = useQuery<Project[]>({
+    queryKey: ['/api/projects'],
+  });
+
+  if (isLoading) {
+    return (
+      <section id="portfolio" className="py-20 px-6 lg:px-8" data-testid="section-portfolio">
+        <div className="max-w-6xl mx-auto">
+          <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4 text-center" data-testid="text-portfolio-heading">
+            Featured Work
+          </h2>
+          <p className="text-lg text-muted-foreground text-center mb-12">Loading projects...</p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="portfolio" className="py-20 px-6 lg:px-8" data-testid="section-portfolio">
@@ -57,8 +37,11 @@ export default function Portfolio({ projects = defaultProjects }: PortfolioProps
           A selection of projects showcasing my expertise in modern web development
         </p>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((project) => (
+        {projects.length === 0 ? (
+          <p className="text-center text-muted-foreground">No projects yet. Add some from the admin panel!</p>
+        ) : (
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {projects.map((project) => (
             <Card
               key={project.id}
               className="overflow-hidden cursor-pointer hover:scale-105 hover-elevate active-elevate-2 transition-all duration-300 group"
@@ -92,8 +75,9 @@ export default function Portfolio({ projects = defaultProjects }: PortfolioProps
                 </div>
               </div>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <Dialog open={!!selectedProject} onOpenChange={() => setSelectedProject(null)}>
