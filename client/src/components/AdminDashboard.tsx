@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Upload } from "lucide-react";
 import { queryClient } from "@/lib/queryClient";
 import type { Profile } from "@shared/schema";
+import ImageCropper from "./ImageCropper";
 
 export default function AdminDashboard() {
   const { toast } = useToast();
@@ -26,6 +27,8 @@ export default function AdminDashboard() {
   });
   const [profileImage, setProfileImage] = useState<File | null>(null);
   const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [imageToCrop, setImageToCrop] = useState<string>("");
 
   const { data: profile } = useQuery<Profile>({
     queryKey: ['/api/profile'],
@@ -94,8 +97,32 @@ export default function AdminDashboard() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setProfileImage(e.target.files[0]);
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageToCrop(reader.result as string);
+        setCropperOpen(true);
+      };
+      reader.readAsDataURL(file);
     }
+  };
+
+  const handleCropComplete = (croppedBlob: Blob) => {
+    const croppedFile = new File([croppedBlob], "profile-image.jpg", {
+      type: "image/jpeg",
+    });
+    setProfileImage(croppedFile);
+    setCropperOpen(false);
+    setImageToCrop("");
+    toast({
+      title: "Image cropped",
+      description: "Your profile picture has been cropped and is ready to save.",
+    });
+  };
+
+  const handleCropCancel = () => {
+    setCropperOpen(false);
+    setImageToCrop("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -130,6 +157,13 @@ export default function AdminDashboard() {
         <h1 className="text-4xl font-bold text-foreground mb-8" data-testid="text-admin-heading">
           Admin Dashboard
         </h1>
+
+        <ImageCropper
+          imageSrc={imageToCrop}
+          isOpen={cropperOpen}
+          onCropComplete={handleCropComplete}
+          onCancel={handleCropCancel}
+        />
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <Card className="p-6 space-y-4">
