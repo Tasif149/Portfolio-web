@@ -177,17 +177,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload project image (protected)
-  app.post('/api/projects/upload-image', requireApiKey, projectUpload.single('image'), async (req, res) => {
-    try {
+  app.post('/api/projects/upload-image', requireApiKey, (req, res, next) => {
+    projectUpload.single('image')(req, res, (err) => {
+      if (err) {
+        if (err instanceof multer.MulterError) {
+          if (err.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: 'File size exceeds 5MB limit' });
+          }
+          return res.status(400).json({ error: `Upload error: ${err.message}` });
+        }
+        if (err.message === 'Only image files are allowed') {
+          return res.status(400).json({ error: 'Only image files are allowed (JPG, PNG, GIF, WebP)' });
+        }
+        console.error('Error uploading project image:', err);
+        return res.status(500).json({ error: 'Failed to upload image' });
+      }
+      
       if (!req.file) {
         return res.status(400).json({ error: 'No image file provided' });
       }
+      
       const imageUrl = `/uploads/projects/${req.file.filename}`;
       res.json({ imageUrl });
-    } catch (error) {
-      console.error('Error uploading project image:', error);
-      res.status(500).json({ error: 'Failed to upload image' });
-    }
+    });
   });
 
   // Create a new project (protected)
