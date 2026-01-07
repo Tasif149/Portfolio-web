@@ -273,10 +273,10 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!apiKey) {
+    if (!csrfToken) {
       toast({
         title: "Error",
-        description: "Please enter your API key first",
+        description: "Security token not loaded. Please refresh the page.",
         variant: "destructive",
       });
       return;
@@ -312,10 +312,10 @@ export default function ProjectsManager({}: ProjectsManagerProps = {}) {
   };
 
   const handleDelete = (id: string) => {
-    if (!apiKey) {
+    if (!csrfToken) {
       toast({
         title: "Error",
-        description: "Please enter your API key first",
+        description: "Security token not loaded. Please refresh the page.",
         variant: "destructive",
       });
       return;

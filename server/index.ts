@@ -42,10 +42,11 @@ app.use(session({
 
 // CSRF Protection
 const {
-  generateToken,
+  generateCsrfToken,
   doubleCsrfProtection,
 } = doubleCsrf({
   getSecret: () => process.env.SESSION_SECRET || 'csrf-secret-change-in-production',
+  getSessionIdentifier: (req) => req.session.id || '',
   cookieName: '__Host-psifi.x-csrf-token',
   cookieOptions: {
     httpOnly: true,
@@ -59,7 +60,7 @@ const {
 
 // Make CSRF token generator available to routes
 app.use((req, res, next) => {
-  res.locals.csrfToken = generateToken(req, res);
+  res.locals.csrfToken = generateCsrfToken(req, res, { overwrite: true });
   next();
 });
 

@@ -132,10 +132,15 @@ Navigate to `/admin` to access the admin dashboard.
 - Admin access requires `ADMIN_KEY` environment variable
 - If `ADMIN_KEY` is not set, admin panel returns 403 Forbidden
 - Sessions use HttpOnly cookies (not accessible via JavaScript)
+- CSRF protection on all state-changing operations (POST, PATCH, DELETE)
+- Content Security Policy (CSP) enabled in production mode
+- SameSite=strict cookies in production prevent CSRF attacks
 - All admin routes protected by authentication middleware
 - Input validation on all forms
 - File size limits enforced (5MB max)
 - Only image files allowed for uploads
+
+**Note**: CodeQL may report CSRF warnings on GET endpoints, which is expected and safe. GET requests are idempotent and should not modify state, therefore CSRF protection is only applied to POST/PATCH/DELETE operations per OWASP guidelines.
 
 ## API Endpoints
 
