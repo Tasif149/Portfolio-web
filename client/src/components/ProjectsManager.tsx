@@ -31,10 +31,10 @@ interface ProjectFormData {
 }
 
 interface ProjectsManagerProps {
-  apiKey: string;
+  // No props needed - auth via session cookie
 }
 
-export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
+export default function ProjectsManager({}: ProjectsManagerProps = {}) {
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
@@ -61,9 +61,9 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       const response = await fetch('/api/projects', {
         method: 'POST',
         headers: {
-          'x-api-key': apiKey,
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(data),
       });
 
@@ -97,7 +97,9 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
       const response = await fetch(`/api/projects/${id}`, {
         method: 'PATCH',
         headers: {
-          'x-api-key': apiKey,
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
@@ -132,9 +134,7 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
     mutationFn: async (id: string) => {
       const response = await fetch(`/api/projects/${id}`, {
         method: 'DELETE',
-        headers: {
-          'x-api-key': apiKey,
-        },
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -214,9 +214,7 @@ export default function ProjectsManager({ apiKey }: ProjectsManagerProps) {
 
       const response = await fetch('/api/projects/upload-image', {
         method: 'POST',
-        headers: {
-          'x-api-key': apiKey,
-        },
+        credentials: 'include',
         body: formDataUpload,
       });
 

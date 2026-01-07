@@ -1,20 +1,16 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import express from "express";
 import { createServer, type Server } from "http";
-import { storage } from "./storage";
+import { storage } from "./fileStorage";
 import { insertProfileSchema, insertProjectSchema } from "@shared/schema";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 
-// Configure multer for profile image uploads
-const uploadDir = path.join(process.cwd(), "uploads");
-const projectUploadDir = path.join(uploadDir, "projects");
+// Configure multer for profile image uploads to data/uploads
+const uploadDir = path.join(process.cwd(), "data", "uploads");
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
-}
-if (!fs.existsSync(projectUploadDir)) {
-  fs.mkdirSync(projectUploadDir, { recursive: true });
 }
 
 const upload = multer({
@@ -55,22 +51,88 @@ const projectUpload = multer({
   }
 });
 
-// API key authentication middleware
-function requireApiKey(req: Request, res: Response, next: NextFunction) {
-  const apiKey = req.headers['x-api-key'];
-  
-  if (!apiKey || apiKey !== process.env.ADMIN_API_KEY) {
-    return res.status(401).json({ error: 'Unauthorized - Invalid API key' });
+// Authentication middleware - requires admin login via session
+function requireAuth(req: Request, res: Response, next: NextFunction) {
+  if (!req.session.authenticated) {
+    return res.status(401).json({ error: 'Unauthorized - Please login first' });
   }
-  
   next();
 }
 
+// Check if ADMIN_KEY is configured
+function isAdminKeyConfigured(): boolean {
+  return !!process.env.ADMIN_KEY && process.env.ADMIN_KEY.length > 0;
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Serve uploaded files
+  // Serve uploaded files from data/uploads
+  app.use('/data/uploads', express.static(uploadDir));
+  
+  // Legacy compatibility - serve from /uploads as well
   app.use('/uploads', express.static(uploadDir));
 
-  // Get portfolio profile
+  // Admin login endpoint
+  app.post('/api/admin/login', (req, res) => {
+    if (!isAdminKeyConfigured()) {
+      return res.status(403).json({ error: 'Admin access is not configured' });
+    }
+    
+    const { key } = req.body;
+    
+    if (!key || key !== process.env.ADMIN_KEY) {
+      return res.status(401).json({ error: 'Invalid admin key' });
+    }
+    
+    req.session.authenticated = true;
+    res.json({ success: true });
+  });
+
+  // Admin logout endpoint
+  app.post('/api/admin/logout', (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to logout' });
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // Check admin authentication status
+  app.get('/api/admin/status', (req, res) => {
+    res.json({ 
+      authenticated: !!req.session.authenticated,
+      configured: isAdminKeyConfigured(),
+    });
+  });
+
+  // Public config endpoint (safe subset of profile + projects metadata)
+  app.get('/api/config', async (req, res) => {
+    try {
+      const profile = await storage.getProfile();
+      const projects = await storage.getProjects();
+      
+      res.json({
+        profile: profile ? {
+          name: profile.name,
+          title: profile.title,
+          bio: profile.bio,
+          profileImage: profile.profileImage,
+          email: profile.email,
+          phone: profile.phone,
+          location: profile.location,
+          github: profile.github,
+          linkedin: profile.linkedin,
+          twitter: profile.twitter,
+        } : null,
+        projectCount: projects.length,
+      });
+    } catch (error) {
+      console.error('Error fetching config:', error);
+      res.status(500).json({ error: 'Failed to fetch configuration' });
+    }
+  });
+
+  // Get portfolio profile (public)
   app.get('/api/profile', async (req, res) => {
     try {
       const profile = await storage.getProfile();
@@ -85,7 +147,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update portfolio profile (protected)
-  app.post('/api/profile', requireApiKey, upload.single('profileImage'), async (req, res) => {
+  app.post('/api/profile', requireAuth, upload.single('profileImage'), async (req, res) => {
     try {
       // Get existing profile to preserve image if no new one provided
       const existingProfile = await storage.getProfile();
@@ -122,7 +184,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       // Priority 2: Check if a file was uploaded
       else if (req.file) {
-        profileData.profileImage = `/uploads/${req.file.filename}`;
+        profileData.profileImage = `/data/uploads/${req.file.filename}`;
       }
       // Priority 3: Keep existing image if no new one provided
       else if (existingProfile?.profileImage) {
@@ -145,7 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get all projects
+  // Get all projects (public)
   app.get('/api/projects', async (req, res) => {
     try {
       const projectsList = await storage.getProjects();
@@ -156,7 +218,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get a single project
+  // Get a single project (public)
   app.get('/api/projects/:id', async (req, res) => {
     try {
       const project = await storage.getProject(req.params.id);
@@ -171,7 +233,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload project image (protected) - saves to database
-  app.post('/api/projects/upload-image', requireApiKey, (req, res, next) => {
+  app.post('/api/projects/upload-image', requireAuth, (req, res, next) => {
     projectUpload.single('image')(req, res, async (err) => {
       if (err) {
         if (err instanceof multer.MulterError) {
@@ -207,7 +269,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Create a new project (protected)
-  app.post('/api/projects', requireApiKey, async (req, res) => {
+  app.post('/api/projects', requireAuth, async (req, res) => {
     try {
       // Parse order: validate it's a finite number
       let order = 0;
@@ -241,7 +303,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update a project (protected)
-  app.patch('/api/projects/:id', requireApiKey, async (req, res) => {
+  app.patch('/api/projects/:id', requireAuth, async (req, res) => {
     try {
       const projectData: any = { ...req.body };
       
@@ -262,7 +324,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         delete projectData.order;
       }
 
-      // Remove undefined values to prevent null writes on NOT NULL columns
+      // Remove undefined values to prevent null writes
       Object.keys(projectData).forEach(key => {
         if (projectData[key] === undefined) {
           delete projectData[key];
@@ -282,7 +344,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete a project (protected)
-  app.delete('/api/projects/:id', requireApiKey, async (req, res) => {
+  app.delete('/api/projects/:id', requireAuth, async (req, res) => {
     try {
       await storage.deleteProject(req.params.id);
       res.json({ success: true });
