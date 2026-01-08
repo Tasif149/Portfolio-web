@@ -3,6 +3,7 @@
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import { spawn } from 'child_process';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -14,9 +15,15 @@ if (existsSync(distPath)) {
 } else {
   // Development/fallback mode: use tsx to run TypeScript directly
   console.log('dist/index.js not found, running server in development mode with tsx...');
-  const { spawn } = await import('child_process');
+  
   const tsxPath = join(__dirname, 'node_modules', '.bin', 'tsx');
   const serverPath = join(__dirname, 'server', 'index.ts');
+  
+  // Verify tsx is installed
+  if (!existsSync(tsxPath)) {
+    console.error('Error: tsx not found. Please run "npm install" first.');
+    process.exit(1);
+  }
   
   // Force development mode when dist doesn't exist so Vite can serve the client
   const child = spawn(tsxPath, [serverPath], {
@@ -26,6 +33,7 @@ if (existsSync(distPath)) {
   
   child.on('error', (err) => {
     console.error('Failed to start server:', err);
+    console.error('Make sure dependencies are installed: npm install');
     process.exit(1);
   });
   
