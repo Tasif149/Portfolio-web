@@ -1,5 +1,5 @@
 // Production entry point for the portfolio server
-// This file imports and runs the compiled TypeScript server or falls back to tsx
+// This file imports and runs the compiled TypeScript server or builds if needed
 import { existsSync } from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -14,33 +14,37 @@ if (existsSync(distPath)) {
   // Production mode: use pre-built dist/index.js
   await import('./dist/index.js');
 } else {
-  // Development/fallback mode: use tsx to run TypeScript directly
-  console.log('dist/index.js not found, running server in development mode with tsx...');
+  // Build mode: build the application first, then run it
+  console.log('dist/index.js not found, building the application...');
   
-  // Use platform-specific tsx binary path
-  const tsxBinary = platform() === 'win32' ? 'tsx.cmd' : 'tsx';
-  const tsxPath = join(__dirname, 'node_modules', '.bin', tsxBinary);
-  const serverPath = join(__dirname, 'server', 'index.ts');
+  const npmCommand = platform() === 'win32' ? 'npm.cmd' : 'npm';
   
-  // Verify tsx is installed
-  if (!existsSync(tsxPath)) {
-    console.error('Error: tsx not found. Please run "npm install" first.');
-    process.exit(1);
-  }
-  
-  // Use development mode when dist doesn't exist (unless explicitly overridden)
-  const child = spawn(tsxPath, [serverPath], {
+  // Run npm run build
+  const buildProcess = spawn(npmCommand, ['run', 'build'], {
     stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: process.env.NODE_ENV || 'development' }
+    cwd: __dirname,
+    shell: true
   });
   
-  child.on('error', (err) => {
-    console.error('Failed to start server:', err);
+  buildProcess.on('error', (err) => {
+    console.error('Failed to build:', err);
     console.error('Make sure dependencies are installed: npm install');
     process.exit(1);
   });
   
-  child.on('exit', (code) => {
-    process.exit(code || 0);
+  buildProcess.on('exit', (code) => {
+    if (code !== 0) {
+      console.error(`Build failed with exit code ${code}`);
+      process.exit(code ?? 1);
+    }
+    
+    // Build succeeded, now run the server
+    console.log('Build complete! Starting server...');
+    
+    // Import and run the built server
+    import('./dist/index.js').catch(err => {
+      console.error('Failed to start server:', err);
+      process.exit(1);
+    });
   });
 }

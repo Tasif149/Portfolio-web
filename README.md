@@ -54,34 +54,34 @@ npm run build
 
 ## Running the Application
 
-### Simple Start (Recommended for Quick Setup)
+### Simple Start (Recommended)
 
 ```bash
-# Install dependencies first
+# Install dependencies
 npm install
 
-# Run the server directly - no build required!
+# Run the server - builds automatically if needed!
 node index.js
 ```
 
-The server automatically detects if the build exists:
-- **With build**: Uses optimized production build (`dist/index.js`)
-- **Without build**: Runs in development mode with Vite HMR
+The server intelligently handles the build:
+- **With existing build**: Uses optimized production build (`dist/index.js`)
+- **Without build**: Automatically runs `npm run build` first, then starts
 
 This is perfect for servers that only run `node index.js` - just install dependencies and start!
 
-### Development Mode
+### Development Mode (with Hot Reload)
 
 ```bash
 npm run dev
 ```
 
-Runs the app in development mode with hot module replacement (HMR).
+Runs the app in development mode with hot module replacement (HMR) for active development.
 
-### Production Mode (Optimized)
+### Manual Production Build
 
 ```bash
-# Build first for optimal performance
+# Build first (optional - node index.js does this automatically)
 npm run build
 
 # Then start
@@ -89,10 +89,7 @@ npm start
 # or simply: node index.js
 ```
 
-For production deployments, building first gives you:
-- Faster startup time
-- Smaller memory footprint
-- Optimized client bundle
+Pre-building is optional since `node index.js` builds automatically when needed.
 
 ## Storage Paths
 
@@ -268,25 +265,25 @@ portfolio-web/
 
 ## Building for Production
 
-### Quick Start (No Build Required)
+### Quick Start
 
 ```bash
 # Install dependencies
 npm install
 
-# Just run it!
+# Run it - builds automatically if needed!
 node index.js
 ```
 
-The server works out of the box with just `npm install` and `node index.js`.
+The server automatically builds the application if `dist/` doesn't exist, then starts.
 
-### Optimized Build (Recommended for Production)
+### Manual Build (Optional)
 
 ```bash
 # Install dependencies
 npm install
 
-# Build frontend and backend for optimal performance
+# Build frontend and backend (optional - node index.js does this automatically)
 npm run build
 
 # Start production server
@@ -296,15 +293,15 @@ npm start  # or: node index.js
 The build process:
 1. Vite builds the React frontend to `dist/public/`
 2. esbuild bundles the Express server to `dist/index.js`
-3. `index.js` detects the build and uses it for better performance
+3. `index.js` detects the build and uses it
 
-**Note**: Building is optional but recommended for production as it provides faster startup and lower memory usage.
+**Note**: `node index.js` automatically builds if needed, so manual building is optional.
 
 ## Deployment
 
 ### Pterodactyl / Generic Node.js Hosting
 
-#### Simple Deployment (No Build Step)
+#### Simple Deployment (Automatic Build)
 
 1. Set environment variables in your hosting panel:
    - `ADMIN_KEY` (required)
@@ -316,16 +313,16 @@ The build process:
    node index.js
    ```
 
-The server will automatically run in development mode with Vite serving the client.
+The server will automatically build the application on first run, then start serving.
 
-#### Optimized Deployment (With Build)
+#### Pre-Built Deployment (Faster Startup)
 
 1. Set environment variables in your hosting panel:
    - `ADMIN_KEY` (required)
    - `PORT` (optional, defaults to 3000)
    - `NODE_ENV=production` (optional)
 
-2. Build the application:
+2. Build the application locally or in CI:
    ```bash
    npm install
    npm run build
@@ -333,10 +330,11 @@ The server will automatically run in development mode with Vite serving the clie
 
 3. Start command:
    ```bash
-   npm start
+   npm start  # or: node index.js
    ```
 
 4. The server will:
+   - Use pre-built files from `dist/` (faster startup)
    - Create `data/` directory if needed
    - Start on the specified PORT
    - Serve the built frontend from `dist/public/`
