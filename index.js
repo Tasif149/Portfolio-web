@@ -19,11 +19,10 @@ if (existsSync(distPath)) {
   
   const npmCommand = platform() === 'win32' ? 'npm.cmd' : 'npm';
   
-  // Run npm run build
+  // Run npm run build without shell for better security
   const buildProcess = spawn(npmCommand, ['run', 'build'], {
     stdio: 'inherit',
-    cwd: __dirname,
-    shell: true
+    cwd: __dirname
   });
   
   buildProcess.on('error', (err) => {
@@ -32,7 +31,7 @@ if (existsSync(distPath)) {
     process.exit(1);
   });
   
-  buildProcess.on('exit', (code) => {
+  buildProcess.on('exit', async (code) => {
     if (code !== 0) {
       console.error(`Build failed with exit code ${code}`);
       process.exit(code ?? 1);
@@ -42,9 +41,11 @@ if (existsSync(distPath)) {
     console.log('Build complete! Starting server...');
     
     // Import and run the built server
-    import('./dist/index.js').catch(err => {
+    try {
+      await import('./dist/index.js');
+    } catch (err) {
       console.error('Failed to start server:', err);
       process.exit(1);
-    });
+    }
   });
 }
